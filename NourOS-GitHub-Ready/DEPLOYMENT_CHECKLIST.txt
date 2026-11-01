@@ -1,0 +1,8 @@
+1. Create private GitHub repo nour-os.
+2. Create D1 nour-os-db and private R2 nour-os-files.
+3. Replace D1 UUID and Access placeholders in wrangler.jsonc.
+4. Configure Cloudflare Access for /admin/*; allow only your verified email with MFA.
+5. npm install; npx wrangler login; npx wrangler d1 migrations apply nour-os-db --remote.
+6. Push the project folder contents to GitHub and connect Cloudflare Workers Git deployment.
+7. Test all access controls and bilingual frontend BEFORE sharing the URL.
+8. Re-upload certificate PDFs in the protected Content Studio; files are not included in public assets.
