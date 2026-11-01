@@ -1,13 +1,16 @@
-name: Deploy Nour.OS to Cloudflare
-
-# Trigger manually after completing the Cloudflare setup and GitHub secrets.
-# To enable automatic deployment later, add `push: {branches: [main]}`.
+name: Deploy Nour.OS Workers
 on:
   workflow_dispatch:
-
+    inputs:
+      target:
+        description: Worker to deploy
+        required: true
+        type: choice
+        options:
+          - public
+          - admin
 permissions:
   contents: read
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -17,8 +20,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
-      - name: Deploy Worker
-        run: npx wrangler deploy
+      - name: Deploy selected Worker
+        run: npx wrangler deploy --config ${{ inputs.target == 'admin' && 'wrangler.admin.jsonc' || 'wrangler.jsonc' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

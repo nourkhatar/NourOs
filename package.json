@@ -1,1 +1,13 @@
-{"name":"nour-os","private":true,"version":"12.0.0","type":"module","scripts":{"deploy":"wrangler deploy","db:migrate":"wrangler d1 migrations apply nour-os-db --remote"},"devDependencies":{"wrangler":"^4.0.0"}}
+{
+  "name": "nour-os",
+  "private": true,
+  "version": "12.0.0",
+  "type": "module",
+  "scripts": {
+    "deploy:public": "wrangler deploy --config wrangler.jsonc",
+    "deploy:admin": "wrangler deploy --config wrangler.admin.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
