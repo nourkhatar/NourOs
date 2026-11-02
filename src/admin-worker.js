@@ -5,7 +5,7 @@ export default {async fetch(req,env){
   if(!await isAdmin(req,env))return fail('Unauthorized',401);
   const u=new URL(req.url),p=u.pathname;
   if(p==='/'||p==='/admin')return Response.redirect(u.origin+'/admin/',302);
-  if(p==='/admin/'||p==='/admin/index.html')return env.ASSETS.fetch(new Request(new URL('/admin/index.html',u),req));
+ if(p==='/admin/'||p==='/admin/index.html')return env.ASSETS.fetch(new Request(new URL('/admin/',u),req));
   if(p==='/admin/studio.js'||p==='/styles.css')return env.ASSETS.fetch(req);
   if(p.startsWith('/api/file/')&&['GET','HEAD'].includes(req.method))return serveFile(req,env,decodeURIComponent(p.slice('/api/file/'.length)));
   if(p==='/admin/api/content'&&req.method==='GET'){
