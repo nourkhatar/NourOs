@@ -1,3 +1,4 @@
+
 {
   "name": "nour-os-admin",
   "main": "src/admin-worker.js",
@@ -19,10 +20,10 @@
       "binding": "FILES",
       "bucket_name": "nour-os-files"
     }
-  ],"vars": {
-  "ACCESS_TEAM_DOMAIN": "frosty-leaf-3e6c.cloudflareaccess.com",
-  "ACCESS_AUD": "97c660b290b5f78b15c4aebb040f81595677b36ed47261d39e5cc16174eccbbc",
-  "ADMIN_EMAIL": "nourkhatar55@gmail.com"
-}
+  ],
+  "vars": {
+    "ACCESS_TEAM_DOMAIN": "frosty-leaf-3e6c.cloudflareaccess.com",
+    "ACCESS_AUD": "97c660b290b5f78b15c4aebb040f81595677b36ed47261d39e5cc16174eccbbc",
+    "ADMIN_EMAIL": "nourkhatar55@gmail.com"
   }
 }

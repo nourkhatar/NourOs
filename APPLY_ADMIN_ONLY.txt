@@ -1,0 +1,17 @@
+Nour.OS V11 admin-only patch
+
+Based on NourOs-main (2).zip. Only these three files change:
+- admin-public/admin/index.html
+- admin-public/admin/studio.js
+- admin-public/styles.css
+
+DO NOT overwrite wrangler.admin.jsonc, src/admin-worker.js, public/, migrations/, or any other files.
+
+1. Back up your current project.
+2. Extract this archive directly into C:\Users\LUMEN\Downloads\NourOs and overwrite only the three named admin-public files.
+3. Review: git diff -- admin-public
+4. Deploy only the admin Worker: npx wrangler deploy --config wrangler.admin.jsonc
+5. Test /admin/ including edit/save, upload, permissions, and export before using it for important changes.
+6. Once verified: git add admin-public && git commit -m "Restore V11 Content Studio UI" && git push origin main
+
+No changes are made to your live D1 database or R2 bucket by extraction. Saving inside the Studio does update D1.
