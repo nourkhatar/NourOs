@@ -6,7 +6,7 @@ export default {async fetch(req,env){
   const u=new URL(req.url),p=u.pathname;
   if(p==='/'||p==='/admin')return Response.redirect(u.origin+'/admin/',302);
  if(p==='/admin/'||p==='/admin/index.html')return env.ASSETS.fetch(new Request(new URL('/admin/',u),req));
-  if(p==='/admin/studio.js'||p==='/styles.css')return env.ASSETS.fetch(req);
+  if(p==='/admin/studio.js'||p==='/styles.css'||p==='/admin/nk-favicon.svg')return env.ASSETS.fetch(req);
   if(p.startsWith('/api/file/')&&['GET','HEAD'].includes(req.method))return serveFile(req,env,decodeURIComponent(p.slice('/api/file/'.length)));
   if(p==='/admin/api/content'&&req.method==='GET'){
    const content=await getRaw(env);return json(content?attach(content,await getFiles(env,true)):null);
@@ -16,6 +16,48 @@ export default {async fetch(req,env){
    const safe=cleanContent(d);
    await env.DB.prepare("INSERT INTO settings(key,value) VALUES ('content',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP").bind(JSON.stringify(safe)).run();
    return json({ok:true});
+  }
+  async function translate(text,target){
+   if(!env.DEEPL_API_KEY)throw Error('DEEPL_API_KEY missing');
+   const endpoint=env.DEEPL_API_ENDPOINT==='https://api.deepl.com'?'https://api.deepl.com':'https://api-free.deepl.com';
+   const response=await fetch(endpoint+'/v2/translate',{method:'POST',headers:{Authorization:'DeepL-Auth-Key '+env.DEEPL_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({text:[text],target_lang:target,preserve_formatting:true})});
+   if(!response.ok)throw Error('DeepL HTTP '+response.status);
+   const result=await response.json();const item=result.translations?.[0];if(!item?.text)throw Error('Empty DeepL response');return item;
+  }
+  async function normalize(text){
+   const input=String(text||'').trim();if(!input)return {en:'',fr:''};
+   const english=await translate(input,'EN-US');
+   const en=english.text;
+   const french=await translate(en,'FR');
+   return {en,fr:french.text,detected:english.detected_source_language||'unknown'};
+  }
+  if(p==='/admin/api/translate'&&req.method==='POST'){
+   if(!env.DEEPL_API_KEY)return fail('Add DEEPL_API_KEY to admin Worker secrets',503);
+   const b=await req.json(),value=String(b.text||'');if(!value.trim()||value.length>12000)return fail('Text must be 1-12000 characters',400);
+   try{return json(await normalize(value))}catch(e){console.error('Translation error',e);return fail('Translation failed; nothing saved. Check DeepL key, endpoint and quota.',502)}
+  }
+  // Incremental sync: one content field per request, avoiding long Worker execution.
+  // English remains the source of truth; existing French is replaced only on success.
+  if(p==='/admin/api/translation/sync'&&req.method==='POST'){
+   if(!env.DEEPL_API_KEY)return fail('Add DEEPL_API_KEY to admin Worker secrets',503);
+   const body=await req.json().catch(()=>({}));
+   const cursor=Number(body.cursor);
+   if(!Number.isSafeInteger(cursor)||cursor<0)return fail('Invalid sync cursor',400);
+   const current=await getRaw(env);if(!current)return fail('Content not found',404);
+   const fields=[{section:'profile',id:null,key:'intro'},...['projects','experience','achievements'].flatMap(section=>(current[section]||[]).flatMap(entry=>['title','desc',...(section==='projects'?['role']:[])].map(key=>({section,id:entry.id,key})))),...Array.from(new Set([...current.projects.map(x=>x.type),...current.experience.map(x=>x.category),...current.achievements.map(x=>x.category)].filter(Boolean))).map(name=>({section:'category',id:null,key:name}))];
+   if(cursor>=fields.length)return json({done:true,total:fields.length,cursor,translated:0});
+   const task=fields[cursor];const target=task.section==='category'?current:(task.section==='profile'?current.profile:(current[task.section]||[]).find(x=>x.id===task.id));
+   if(!target)return fail('Entry changed during sync; refresh and retry',409);
+   const value=String(task.section==='category'?task.key:target[task.key]||'').trim();
+   if(value){
+    try{
+     // Existing English is authoritative: only translate to French.
+     const translated=await translate(value,'FR');
+     if(task.section==='category'){current.categoryTranslations??={};current.categoryTranslations[task.key]=translated.text;}else target[task.key+'Fr']=translated.text;
+     await env.DB.prepare("UPDATE settings SET value=?,updated_at=CURRENT_TIMESTAMP WHERE key='content'").bind(JSON.stringify(cleanContent(current))).run();
+    }catch(e){console.error('Translation sync error',e);return fail('Translation failed at field '+(cursor+1)+' of '+fields.length+'. Check DeepL quota/key, then retry.',502)}
+   }
+   return json({done:cursor+1>=fields.length,total:fields.length,cursor:cursor+1,translated:value?1:0,field:task.section+' / '+task.key});
   }
   if(p==='/admin/api/categories'&&req.method==='GET')return json(await getCategories(env));
   if(p==='/admin/api/categories'&&req.method==='POST'){
